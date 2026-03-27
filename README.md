@@ -29,7 +29,7 @@ Descargue el repositorio mediante el link o con el uso de `git clone` en la term
    ```
    Para realizar el entrenamiento utilice el siguiente comando:
    ```
-   python train.py --img 640 --batch 16 --epochs 2 --data data/voc.yaml --cfg models/yoga.yaml --weights '' --device 0 --label-smoothing 0.1 -- workers 2 --name yoga_voc_test
+   python train.py --img 640 --batch 16 --epochs 2 --data data/voc.yaml --cfg models/yoga.yaml --weights '' --device 0 --label-smoothing 0.1 --workers 2 --name yoga_voc_test
    ```
   Tener en cuenta el tamaño de batch, la cantidad de epochs, la ubicación de la base de datos que se quiere utilizar (data/....), el dispositivo (0 para GPU), el número de trabajadores y el nombre con el que desea guardar los resultados. Al realizar la selección de la base de datos que se desea utilizar, esta se descargará automáticamente en caso de que no cuente con ella.
 
