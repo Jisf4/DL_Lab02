@@ -26,7 +26,7 @@ Descargue el repositorio mediante el link o con el uso de `git clone` en la term
    ```
    python train.py --img 640 --batch 16 --epochs 2 --data data/voc.yaml --cfg models/yoga.yaml --weights '' --device 0 --label-smoothing 0.1 -- workers 2 --name yoga_voc_test
    ```
-  Tener en cuenta el tamaño de batch, la cantidad de epochs, la ubicación de la base de datos que se quiere utilizar (data/....), el dispositivo (0 para GPU), el número de trabajadores y el nombre con el que desea guardar los resultados.
+  Tener en cuenta el tamaño de batch, la cantidad de epochs, la ubicación de la base de datos que se quiere utilizar (data/....), el dispositivo (0 para GPU), el número de trabajadores y el nombre con el que desea guardar los resultados. Al realizar la selección de la base de datos que se desea utilizar, esta se descargará automáticamente en caso de que no cuente con ella.
 
   NOTA:
   En caso de error de detección de GPU, verificar que se ha instalado la versión adecuada de torch. Si no ha sido así se puede solucionar con el código proporcionado en https://pytorch.org/get-started/locally/.
@@ -38,4 +38,5 @@ Descargue el repositorio mediante el link o con el uso de `git clone` en la term
   ```
   Se debe configurar la url de descarga en la página suministrada de acuerdo a las características de su computadora.
 
-
+5. Resultados
+   Los resultados van a ser guardados en ./runs/train/nombre_del_experimento
