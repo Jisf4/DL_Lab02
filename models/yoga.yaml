@@ -1,0 +1,48 @@
+### CREADO PARA EL MODELO CON LA ARQUITECTURA DEL PAPER
+
+# Parámetros de YOGA-s (Small)
+nc: 10  # número de clases (ajusta este valor a 80 para COCO, o al número de tu dataset como VisDrone)
+depth_multiple: 0.57  # Factor de profundidad según Tabla 2 del artículo
+width_multiple: 0.68  # Factor de ancho según Tabla 2 del artículo
+anchors:
+  - [10,13, 16,30, 33,23]  # P3/8 (Objetos pequeños)
+  - [30,61, 62,45, 59,119]  # P4/16 (Objetos medianos)
+  - [116,90, 156,198, 373,326]  # P5/32 (Objetos grandes)
+
+# YOGA Backbone (CSPGhostNet)
+backbone:
+  # [from, number, module, args]
+  [[-1, 1, Conv, [64, 3, 2]],      # 0-P1/2
+   [-1, 1, GhostConv, [128, 3, 2]],     # 1-P2/4
+   [-1, 3, CSPGhost, [128]],            # 2
+   [-1, 1, GhostConv, [256, 3, 2]],     # 3-P3/8
+   [-1, 6, CSPGhost, [256]],            # 4 (Salida hacia el Neck)
+   [-1, 1, GhostConv, [512, 3, 2]],     # 5-P4/16
+   [-1, 9, CSPGhost, [512]],            # 6 (Salida hacia el Neck)
+   [-1, 1, GhostConv, [1024, 3, 2]],  # 7-P5/32
+   [-1, 3, C3Ghost, [1024]],  #8
+   [-1, 1, SPPF, [1024, 5]],           # 9 (Adaptación del SPP clásico)
+  ]
+
+# YOGA Neck (AFF-PANet)
+head:
+  [[-1, 1, GhostConv, [512, 1, 1]],     # 10
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']], # 11
+   [[-1, 6], 1, AFF, [512]],            # 12 (Fusión de atención local/global de capas 11 y 6)
+   [-1, 3, CSPGhost, [512, False]],     # 13
+
+   [-1, 1, GhostConv, [256, 1, 1]],     # 14
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']], # 15
+   [[-1, 4], 1, AFF, [256]],            # 16 (Fusión de atención local/global de capas 15 y 4)
+   [-1, 3, CSPGhost, [256, False]],     # 17 (Salida 1 -> Objetos pequeños)
+
+   [-1, 1, GhostConv, [256, 3, 2]],     # 18
+   [[-1, 14], 1, AFF, [256]],           # 19 (Bottom-up: Fusión de capas 18 y 14)
+   [-1, 3, CSPGhost, [512, False]],     # 20 (Salida 2 -> Objetos medianos)
+
+   [-1, 1, GhostConv, [512, 3, 2]],     # 21
+   [[-1, 10], 1, AFF, [512]],           # 22 (Bottom-up: Fusión de capas 21 y 10)
+   [-1, 3, CSPGhost, [1024, False]],    # 23 (Salida 3 -> Objetos grandes)
+
+   [[17, 20, 23], 1, Detect, [nc, anchors]],  # 24 Head YOLO
+  ]
