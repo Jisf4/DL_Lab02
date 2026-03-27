@@ -22,6 +22,7 @@ Descargue el repositorio mediante el link o con el uso de `git clone` en la term
    pip install -r requirements.txt
    ```
 4. Entrenamiento
+
    Antes de reallizar el entrenamiento, se debe modificar el archivo en ./models/yoga.yaml.
    ```
    nc: 10 # Número de clases de acuerdo a cada dataset
