@@ -22,6 +22,10 @@ Descargue el repositorio mediante el link o con el uso de `git clone` en la term
    pip install -r requirements.txt
    ```
 4. Entrenamiento
+   Antes de reallizar el entrenamiento, se debe modificar el archivo en ./models/yoga.yaml.
+   ```
+   nc: 10 # Número de clases de acuerdo a cada dataset
+   ```
    Para realizar el entrenamiento utilice el siguiente comando:
    ```
    python train.py --img 640 --batch 16 --epochs 2 --data data/voc.yaml --cfg models/yoga.yaml --weights '' --device 0 --label-smoothing 0.1 -- workers 2 --name yoga_voc_test
