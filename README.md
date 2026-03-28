@@ -7,7 +7,7 @@ El presente repositorio cuenta con la implementación de YOGA, un modelo ligero 
 - Creación de una nueva configuración en /models/yoga.yaml que incluye la arquitectura presentada en el artículo.
 - Modificación del archivo /models/common.py para agregar los nuevos bloques: CSPGhost, MSCAM y AFF. Las modificaciones se encuentran al final del código.
 - Modificación del archivo /models/yolo.py para incluir las reglas asociadas a los nuevos bloques. Se encuentran a partir de la línea 392 del código.
-- Creación de un nuevo archivo de configuración para el dataset BDD100k. El dataset modificado se puede descargar en el siguiente [link](https://drive.google.com/file/d/1w2cj7jSv4AlaZpRyxdbiLnXSwmrKZ23x/view?usp=sharing).
+- Creación de un nuevo archivo de configuración para el dataset BDD100k en /data/bdd100k.yaml. El dataset modificado se puede descargar en el siguiente [link](https://drive.google.com/file/d/1w2cj7jSv4AlaZpRyxdbiLnXSwmrKZ23x/view?usp=sharing).
 - Inclusión de resultados obtenidos para el entrenamiento de 3 bases de datos: PascalVOC, VisDrone y BDD100k
 
 
