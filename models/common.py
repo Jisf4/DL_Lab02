@@ -56,26 +56,25 @@ from utils.general import (
 )
 from utils.torch_utils import copy_attr, smart_inference_mode
 
-## AUTOPAD MODIFICADO
 def autopad(k, p=None):  # kernel, padding
+    # Pad to 'same'
     if p is None:
-        p = k // 2 if isinstance(k, int) else [x // 2 for x in k]
+        p = k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
     return p
-# BLOQUE DE CONVOLUCIÓN MODIFICADO
+
 class Conv(nn.Module):
-    # Bloque estándar: Conv2D + BatchNorm + SiLU
-    def __init__(self, c1, c2, k=1, s=1, p=None, g=1):
+    # Standard convolution
+    def __init__(self, c1, c2, k=1, s=1, p=None, g=1, act=True):  # ch_in, ch_out, kernel, stride, padding, groups
         super().__init__()
         self.conv = nn.Conv2d(c1, c2, k, s, autopad(k, p), groups=g, bias=False)
         self.bn = nn.BatchNorm2d(c2)
-        self.act = nn.SiLU()
-
+        self.act = nn.SiLU() if act is True else (act if isinstance(act, nn.Module) else nn.Identity())
+#        self.act = nn.Mish() if act is True else (act if isinstance(act, nn.Module) else nn.Identify())
     def forward(self, x):
         return self.act(self.bn(self.conv(x)))
-    
+
     def forward_fuse(self, x):
         return self.act(self.conv(x))
-##
 
 class DWConv(Conv):
     """Implements a depth-wise convolution layer with optional activation for efficient spatial filtering."""
@@ -341,38 +340,31 @@ class Focus(nn.Module):
         return self.conv(torch.cat((x[..., ::2, ::2], x[..., 1::2, ::2], x[..., ::2, 1::2], x[..., 1::2, 1::2]), 1))
         # return self.conv(self.contract(x))
 
-
-# BLOQUE MODIFICADO
-
 class GhostConv(nn.Module):
-    # Ghost Convolution [cite: 198]
-    def __init__(self, c1, c2, k=1, s=1):
+    # Ghost Convolution https://github.com/huawei-noah/ghostnet
+    def __init__(self, c1, c2, k=1, s=1, g=1, act=True):  # ch_in, ch_out, kernel, stride, groups
         super().__init__()
-        c_ = c2 // 2  # Utiliza solo la mitad de los filtros 
-        self.cv1 = Conv(c1, c_, k, s) # Convolución estándar 
-        self.cv2 = Conv(c_, c_, 5, 1, g=c_) # Operación lineal barata (depth-wise) con grupos
+        c_ = c2 // 2  # hidden channels
+        self.cv1 = Conv(c1, c_, k, s, None, g, act)
+        self.cv2 = Conv(c_, c_, 5, 1, None, c_, act)
 
     def forward(self, x):
         y = self.cv1(x)
-        return torch.cat((y, self.cv2(y)), 1) # Concatenación
-
-# BLOQUE MODIFICADO
+        return torch.cat([y, self.cv2(y)], 1)
+    
 class GhostBottleneck(nn.Module):
-    # Ghost bottleneck capa
-    def __init__(self, c1, c2):
+    # Ghost Bottleneck https://github.com/huawei-noah/ghostnet
+    def __init__(self, c1, c2, k=3, s=1):  # ch_in, ch_out, kernel, stride
         super().__init__()
         c_ = c2 // 2
-        self.conv = nn.Sequential(
-            GhostConv(c1, c_), # Capa de expansión
-            Conv(c_, c_, 3, 1, g=c_), # Depth-wise convolution en el medio 
-            GhostConv(c_, c2) # Reduce el número de canales 
-        )
-        self.shortcut = nn.Sequential() if c1 == c2 else Conv(c1, c2, 1, 1)
+        self.conv = nn.Sequential(GhostConv(c1, c_, 1, 1),  # pw
+                                  DWConv(c_, c_, k, s, act=False) if s == 2 else nn.Identity(),  # dw
+                                  GhostConv(c_, c2, 1, 1, act=False))  # pw-linear
+        self.shortcut = nn.Sequential(DWConv(c1, c1, k, s, act=False),
+                                      Conv(c1, c2, 1, 1, act=False)) if s == 2 else nn.Identity()
 
     def forward(self, x):
         return self.conv(x) + self.shortcut(x)
-    
-    ###
 
 
 class Contract(nn.Module):
@@ -1090,70 +1082,68 @@ class Classify(nn.Module):
         return self.linear(self.drop(self.pool(self.conv(x)).flatten(1)))
 
 
-### FUNCIONES DEL PAPER AGREGADAS
+###################################################################
+# FUNCIONES ADICIOANLES PARA YOGA
+###################################################################
 
+
+# Implementación de CSPGhost de acuerdo a la figura 3a del artículo
 class CSPGhost(nn.Module):
-    # CSPGhost Module basado en la Figura 3a [cite: 193]
     def __init__(self, c1, c2, n=1, shortcut=True):
         super().__init__()
-        c_ = c2 // 2
-        self.cv1 = Conv(c1, c_, 1, 1)
-        self.cv2 = Conv(c1, c_, 1, 1)
-        self.cv3 = Conv(2 * c_, c2, 1, 1)
-        self.m = nn.Sequential(*(GhostBottleneck(c_, c_) for _ in range(n)))
+        c_ = c2 // 2   # División en dos canales
+        self.cv1 = Conv(c1, c_, 1, 1) # Camino principal
+        self.cv2 = Conv(c1, c_, 1, 1) # Atajo
+        self.cv3 = Conv(2 * c_, c2, 1, 1) 
+        self.m = nn.Sequential(*(GhostBottleneck(c_, c_) for _ in range(n))) # Aplicación de GBn
 
     def forward(self, x):
-        y1 = self.m(self.cv1(x))
-        y2 = self.cv2(x)
-        return self.cv3(torch.cat((y1, y2), 1))
-    
+        y1 = self.m(self.cv1(x)) # Camino principal pasa por Gbn
+        y2 = self.cv2(x) # Atajo
+        return self.cv3(torch.cat((y1, y2), 1)) # Concatenación final 
+
+# Implementación de Multi-scale channel attention module (MSCAM) de acuerdo a figura 5b del artículo
 class MSCAM(nn.Module):
-    # Multi-scale channel attention module [cite: 259]
     def __init__(self, channels, r=4):
         super().__init__()
-        inter_channels = int(max(1, channels // r))
+        inter_channels = int(max(1, channels // r)) # Comprimir los canales a un cuarta parte (r=4)
         
-        # Vía de contexto global g(Z) [cite: 259]
+        # Vía de contexto global g(Z)
         self.global_pool = nn.AdaptiveAvgPool2d(1)
         self.global_path = nn.Sequential(
             nn.Conv2d(channels, inter_channels, 1),
-            #nn.BatchNorm2d(inter_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(inter_channels, channels, 1)
         )
         
-        # Vía de contexto local L(Z) [cite: 259]
+        # Vía de contexto local L(Z)
         self.local_path = nn.Sequential(
             nn.Conv2d(channels, inter_channels, 1),
-            #nn.BatchNorm2d(inter_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(inter_channels, channels, 1)
         )
 
     def forward(self, x):
-        g = self.global_path(self.global_pool(x))
-        l = self.local_path(x)
-        return torch.sigmoid(g + l) # M(Z) = \sigma(g(Z) + L(Z)) [cite: 260]
+        g = self.global_path(self.global_pool(x)) # Vía global
+        l = self.local_path(x) # Vía local
+        return torch.sigmoid(g + l) # Fusión de acuerdo a M(Z) = sigma(g(Z) + L(Z)
 
+
+
+# Implementación de Attention Feature Fusion with Path Aggregation Network (AFF-PaNet) de acuerdo a la figura 5a del artículo
 class AFF(nn.Module):
-    # Attention Feature Fusion (Versión con desempaquetado defensivo)
+    
     def __init__(self, channels):
         super().__init__()
-        self.mscam = MSCAM(channels)
+        self.mscam = MSCAM(channels) # Utilización de MSCAM
 
     def forward(self, x):
-        # 1. Extraemos los elementos de la lista 'x'
-        x1 = x
+        # Separación de los elementos de la entrada
+        x1 = x[0]
         x2 = x[1]
         
-        # 2. Desempaquetado defensivo: si YOLO envolvió el tensor en una lista por error, lo sacamos
-        if isinstance(x1, list):
-            x1 = x1[0]
-        if isinstance(x2, list):
-            x2 = x2[0]
-            
-        # 3. Suma matemática (ahora garantizado que es Tensor + Tensor)
-        initial_fusion = x1 + x2 
-        attention_weights = self.mscam(initial_fusion)
+        initial_fusion = x1 + x2 # Fusion inicial para ingresarlos a MSCAM
+        attention_weights = self.mscam(initial_fusion) # Aplicación de MSCAM
         
-        return attention_weights * x1 + (1 - attention_weights) * x2
+        return attention_weights * x1 + (1 - attention_weights) * x2 # Fusión de los resultados
+    

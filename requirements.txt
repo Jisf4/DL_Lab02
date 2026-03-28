@@ -1,4 +1,4 @@
-# YOLOv5 requirements
+# YOGA requirements
 # Usage: pip install -r requirements.txt
 
 # Base ------------------------------------------------------------------------
@@ -44,7 +44,8 @@ setuptools>=70.0.0 # Snyk vulnerability fix
 # tritonclient[all]~=2.24.0
 
 # Extras ----------------------------------------------------------------------
-# ipython  # interactive notebook
+ipython  # interactive notebook
+ipykernel
 # mss  # screenshots
 # albumentations>=1.0.3
 # pycocotools>=2.0.6  # COCO mAP

@@ -26,7 +26,7 @@ if platform.system() != "Windows":
     ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
 
-# MODIFICADO PARA IMPORTAR NUEVOS MODELOS
+# IMPORTACIÓN DE TODOS LOS BLOQUES DE COMMON PARA YOGA
 from models.common import *
 
 
@@ -356,6 +356,10 @@ class ClassificationModel(BaseModel):
         self.model = None
 
 
+####################################################################################
+# MODIFICACIONES PARA YOGA
+####################################################################################
+
 def parse_model(d, ch):
     """Parses a YOLOv5 model from a dict `d`, configuring layers based on input channels `ch` and model architecture."""
     LOGGER.info(f"\n{'':>3}{'from':>18}{'n':>3}{'params':>10}  {'module':<40}{'arguments':<30}")
@@ -378,7 +382,7 @@ def parse_model(d, ch):
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     for i, (f, n, m, args) in enumerate(d["backbone"] + d["head"]):  # from, number, module, args
         m = eval(m) if isinstance(m, str) else m  # eval strings
-        # MODIFICADO PARA EVITAR ERRORES DE LECTURA
+        # Modificado para evitar errores de lectura
         for j, a in enumerate(args):
             try:
                 args[j] = eval(a) if isinstance(a, str) else a  # eval strings
@@ -405,19 +409,15 @@ def parse_model(d, ch):
             nn.ConvTranspose2d,
             DWConvTranspose2d,
             C3x,
-            Conv, 
-            CSPGhost, # AGREGADOS NUEVOS BLOQUES
+            CSPGhost, # Nuevo bloque secuencial agregado
         }:
-            c1, c2 = ch[f], args[0]
+            c1, c2 = ch[f], args[0]  
 
-
-
-            # MODIFICADO PARA CONCORDANCIA DEL MODELO
             if c2 != no:  # if not output
                 c2 = make_divisible(c2 * gw, 8)
 
             args = [c1, c2, *args[1:]]
-            if m in {BottleneckCSP, C3, C3TR, C3Ghost, C3x, CSPGhost}:   ##NUEVOS BLOQUES AGREGADOS
+            if m in {BottleneckCSP, C3, C3TR, C3Ghost, C3x, CSPGhost}:   # Nuevo bloque agregado CSPGhost para escalabilidad del modelo
                 args.insert(2, n)  # number of repeats
                 n = 1
         elif m is nn.BatchNorm2d:
@@ -436,12 +436,10 @@ def parse_model(d, ch):
         elif m is Expand:
             c2 = ch[f] // args[0] ** 2
 
-        # REGLAS AGREGADAS PARA NUEVOS BLOQUES
-        elif m is Concat: 
-            c2 = sum(ch[x] for x in f)
+        # Reglas para AFF-PaNet
         elif m is AFF:  
-            c2 = ch[f[0]] # AFF mantiene el número de canales de su primera entrada
-            args=[c2]
+            c2 = ch[f[0]] # Mantener el número de canales de la primera entrada
+            args=[c2] # Empaquetamiento para pasarlo a MSCAM
 
         ###
         else:

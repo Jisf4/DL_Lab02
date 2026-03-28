@@ -1,0 +1,23 @@
+path: ../datasets/bdd100k_yolo  
+train: 
+  - images/train
+val: 
+ - images/val
+test: 
+ - images/test  
+
+nc: 5  
+names: 
+  0: Bicycle
+  1: Bus
+  2: Car
+  3: Caravan
+  4: Motorcycle
+  5: Pedestrian
+  6: Rider
+  7: Trailer
+  8: Train
+  9: Truck
+
+
+#### Descargar base de datos de https://drive.google.com/file/d/1w2cj7jSv4AlaZpRyxdbiLnXSwmrKZ23x/view?usp=sharing
