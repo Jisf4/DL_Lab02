@@ -57,7 +57,7 @@ Descargue el repositorio mediante el link o con el uso de `git clone` en la term
 
 ## Entrenamiento con Jetson Nano
 
-Se pueden encontrar los resultados del entrenamiento en Jetson nano en la carpeta runs/Detect
+Se pueden encontrar los resultados del entrenamiento en Jetson nano en la carpeta runs/train/Detect
 
 ## Trabajo basado en:
 
