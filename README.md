@@ -55,6 +55,10 @@ Descargue el repositorio mediante el link o con el uso de `git clone` en la term
 5. Resultados
    Los resultados van a ser guardados en ./runs/train/nombre_del_experimento
 
+## Entrenamiento con Jetson Nano
+
+Se pueden encontrar los resultados del entrenamiento en Jetson nano en la carpeta runs/Detect
+
 ## Trabajo basado en:
 
 Sunkara, R., & Luo, T. (2023). YOGA: Deep object detection in the wild with lightweight feature learning and multiscale attention. Pattern Recognition, 139, 109451.
